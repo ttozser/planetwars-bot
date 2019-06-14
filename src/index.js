@@ -33,18 +33,7 @@ exports.handleRequest = (req, resp) => {
             .filter(p => p.future.numberOfShips > 0);
         if (freePlanets.length == 0) break;
 
-        var enemyPlanets = planets
-            .filter(planet => planet.future.owner == enemy)
-            .filter(enemyPlanet => {
-                var fleetCopy = copy(fleets);
-                freePlanets.forEach(planet => {
-                    var numberOfShips = Math.min(planet.numberOfShips, planet.future.numberOfShips);
-                    fleetCopy.push(createFleet(planet, enemyPlanet, numberOfShips, player));
-                });
-                var states = calculatePlanetFuture(enemyPlanet, fleetCopy);
-                return states[states.length - 1].owner == player;
-            })
-            .sort((a, b) => b.growthRate - a.growthRate);
+        var enemyPlanets = getValidTargets(planets, fleets, enemy);
         if (enemyPlanets.length == 0) break;
         var target = enemyPlanets[0];
 
@@ -66,6 +55,21 @@ exports.handleRequest = (req, resp) => {
     resp.status(200);
     resp.type('application/json');
     resp.send({"commands": commands});
+}
+
+function getValidTargets(planets, fleets, enemy) {
+    return planets
+            .filter(planet => planet.future.owner == enemy)
+            .filter(enemyPlanet => {
+                var fleetCopy = copy(fleets);
+                freePlanets.forEach(planet => {
+                    var numberOfShips = Math.min(planet.numberOfShips, planet.future.numberOfShips);
+                    fleetCopy.push(createFleet(planet, enemyPlanet, numberOfShips, player));
+                });
+                var states = calculatePlanetFuture(enemyPlanet, fleetCopy);
+                return states[states.length - 1].owner == player;
+            })
+            .sort((a, b) => b.growthRate - a.growthRate);
 }
 
 function createFleet(source, target, numberOfShips, player) {
@@ -95,7 +99,7 @@ function calculatePlanetFuture(planet, fleets) {
     normalizeFleets(planet, fleets).forEach(fleet => {
         var state = states[states.length - 1];
         var numberOfShips = state.numberOfShips 
-            + ((fleet.turnsRemaining - state.turnsRemaining + 1) * planet.growthRate * (state.owner == 'NEUTRAL' ? 0 : 1))
+            + ((fleet.turnsRemaining - state.turnsRemaining) * planet.growthRate * (state.owner == 'NEUTRAL' ? 0 : 1))
             + (fleet.numberOfShips * (fleet.owner == state.owner ? 1 : -1));
         states.push({
             "turnsRemaining": fleet.turnsRemaining,
@@ -112,12 +116,12 @@ function normalizeFleets(planet, fleets) {
         .sort((a, b) => a.turnsRemaining - b.turnsRemaining);
 
     var combinedFleets = [];
-    for (var i=0; i<filteredFleets.length; ++i) {
+    for (var i = 0; i < filteredFleets.length; ++i) {
+        var currentFleet = filteredFleets[i];
         if (combinedFleets.length == 0) {
-            combinedFleets.push(filteredFleets[i]);
+            combinedFleets.push(copy(currentFleet));
         } else {
             var previousFleet = combinedFleets[combinedFleets.length - 1];
-            var currentFleet = filteredFleets[i];
             if (currentFleet.turnsRemaining == previousFleet.turnsRemaining) {
                 if (currentFleet.owner == previousFleet.owner) {
                     previousFleet.numberOfShips += currentFleet.numberOfShips;
@@ -129,6 +133,8 @@ function normalizeFleets(planet, fleets) {
                         previousFleet.owner = currentFleet.owner;
                     }
                 }
+            } else {
+                combinedFleets.push(copy(currentFleet)); 
             }
         }
     }
@@ -139,6 +145,6 @@ function getTravelTime(source, destination) {
     var distance = Math.ceil(Math.sqrt(
         Math.pow(destination.coordinates.x - source.coordinates.x, 2) + 
         Math.pow(destination.coordinates.y - source.coordinates.y, 2) ))
-    // the speed is 1/s
-    return distance;    
+    // the speed is 1/s + 1 round to take off
+    return distance + 1;    
 }
