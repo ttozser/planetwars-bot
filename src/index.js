@@ -1,5 +1,5 @@
 exports.handleRequest = (req, resp) => {
-    console.log("request: " + JSON.stringify(req.body, null, 2));
+    console.log("request: " + JSON.stringify(req.body));
 
     if (!req.body.gameState) return;
 
@@ -18,7 +18,7 @@ exports.handleRequest = (req, resp) => {
         planet.future = states[states.length - 1];
         planet.states = states;
     });
-    console.log("original prediction: " + JSON.stringify(planets, null, 2) + "\ngame: " +  req.body.gameState.id );
+    console.log("original prediction: " + JSON.stringify(planets) + "\ngame: " +  req.body.gameState.id );
 
     var commands = [];
     for (;;) {
@@ -51,7 +51,7 @@ exports.handleRequest = (req, resp) => {
 
         var source = freePlanets.sort((a, b) => getTravelTime(a, target) - getTravelTime(b, target))[0];
 
-        var numberOfShips = getMaxNumberOfShips(source, player);
+        var numberOfShips = getRequiredNumberOfShips(source, target, player, fleets);
         var fleet = createFleet(source, target, numberOfShips, player);
         commands.push({
             "sourcePlanet": source.id,
@@ -61,16 +61,28 @@ exports.handleRequest = (req, resp) => {
         fleets.push(fleet);
         source.numberOfShips -= numberOfShips;
     }
-    console.log("final prediction: " + JSON.stringify(planets, null, 2)+ "\ngame: " +  req.body.gameState.id);
+    console.log("final prediction: " + JSON.stringify(planets)+ "\ngame: " +  req.body.gameState.id);
 
-    console.log("turn: " + req.body.gameState.turn + " commands: " + JSON.stringify(commands, null, 2) + "\ngame: " +  req.body.gameState.id );
+    console.log("turn: " + req.body.gameState.turn + " commands: " + JSON.stringify(commands) + "\ngame: " +  req.body.gameState.id );
     resp.status(200);
     resp.type('application/json');
     resp.send({"commands": commands});
 }
 
+function getRequiredNumberOfShips(source, enemyPlanet, player, fleets) {
+    for (var i = getMaxNumberOfShips(source, player) - 1; i >= 0; --i) {
+        var fleetCopy = copy(fleets);
+        fleetCopy.push(createFleet(source, enemyPlanet, i, player));
+        var states = calculatePlanetFuture(enemyPlanet, fleetCopy);
+        if (states[states.length - 1].owner != player) {
+            return i + 1;
+        }
+    }
+    return 0;
+}
+
 function getMaxNumberOfShips(planet, player) {
-    return Math.min(Math.min(planet.states.filter(s => s.owner = player).map(s => s.numberOfShips)) + 1, planet.numberOfShips);
+    return Math.min(Math.min(...planet.states.filter(s => s.owner = player).map(s => s.unnecessaryShips)), planet.numberOfShips);
 }
 
 function createFleet(source, target, numberOfShips, player) {
@@ -94,6 +106,7 @@ function calculatePlanetFuture(planet, fleets) {
     states.push({
         "turnsRemaining": 0,
         "numberOfShips": planet.numberOfShips,
+        "unnecessaryShips": planet.numberOfShips,
         "owner": planet.owner
     });
 
@@ -102,9 +115,11 @@ function calculatePlanetFuture(planet, fleets) {
         var numberOfShips = state.numberOfShips 
             + ((fleet.turnsRemaining - state.turnsRemaining) * planet.growthRate * (state.owner == 'NEUTRAL' ? 0 : 1))
             + (fleet.numberOfShips * (fleet.owner == state.owner ? 1 : -1));
+        var normalizedNumberOfShips = numberOfShips >= 0 ? numberOfShips : -numberOfShips;
         states.push({
             "turnsRemaining": fleet.turnsRemaining,
-            "numberOfShips": numberOfShips >= 0 ? numberOfShips : -numberOfShips,
+            "numberOfShips": normalizedNumberOfShips,
+            "unnecessaryShips" : state.owner != fleet.owner ? normalizedNumberOfShips - 1 : normalizedNumberOfShips,
             "owner": numberOfShips >= 0 ? state.owner : fleet.owner
         });
     });
