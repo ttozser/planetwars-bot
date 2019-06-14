@@ -1,5 +1,5 @@
 exports.handleRequest = (req, resp) => {
-    console.log("request: " + JSON.stringify(req.body));
+    console.log("request: " + JSON.stringify(req.body, null, 2));
 
     if (!req.body.gameState) return;
 
@@ -18,7 +18,7 @@ exports.handleRequest = (req, resp) => {
         planet.future = states[states.length - 1];
         planet.states = states;
     });
-    console.log("game: " +  req.body.gameState.id + " original prediction: " + JSON.stringify(planets));
+    console.log("original prediction: " + JSON.stringify(planets, null, 2) + "\ngame: " +  req.body.gameState.id );
 
     var commands = [];
     for (;;) {
@@ -60,9 +60,9 @@ exports.handleRequest = (req, resp) => {
         fleets.push(fleet);
         source.numberOfShips -= numberOfShips;
     }
-    console.log("game: " +  req.body.gameState.id +" planets: " + JSON.stringify(planets));
+    console.log("final prediction: " + JSON.stringify(planets, null, 2)+ "\ngame: " +  req.body.gameState.id);
 
-    console.log("turn: " +req.body.gameState.turn + " game: " +  req.body.gameState.id + "\ncommands: " + JSON.stringify(commands));
+    console.log("turn: " + req.body.gameState.turn + " commands: " + JSON.stringify(commands, null, 2)+ + "\ngame: " +  req.body.gameState.id );
     resp.status(200);
     resp.type('application/json');
     resp.send({"commands": commands});
@@ -95,9 +95,9 @@ function calculatePlanetFuture(planet, fleets) {
     normalizeFleets(planet, fleets).forEach(fleet => {
         var state = states[states.length - 1];
         var numberOfShips = state.numberOfShips 
-            + ((fleet.turnsRemaining - state.turnsRemaining + 1) * planet.growthRate * (planet.owner == 'NEUTRAL' ? 0 : 1))
-            + (fleet.numberOfShips * (fleet.owner == planet.owner ? 1 : -1));
-            states.push({
+            + ((fleet.turnsRemaining - state.turnsRemaining + 1) * planet.growthRate * (state.owner == 'NEUTRAL' ? 0 : 1))
+            + (fleet.numberOfShips * (fleet.owner == state.owner ? 1 : -1));
+        states.push({
             "turnsRemaining": fleet.turnsRemaining,
             "numberOfShips": numberOfShips >= 0 ? numberOfShips : -numberOfShips,
             "owner": numberOfShips >= 0 ? state.owner : fleet.owner
