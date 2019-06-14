@@ -13,9 +13,20 @@ exports.handleRequest = (req, resp) => {
     var enemyPlanets = planets.filter(p => p.owner == enemy);
     var neutralPlanets = planets.filter(p => p.owner == "NEUTRAL");
 
+    planets.forEach(planet => {
+        var states = calculatePlanetFuture(planet, fleets);
+        planet.future = states[states.length - 1];
+        planet.states = states;
+    });
+    console.log("game: " +  req.body.gameState.id + " original prediction: " + JSON.stringify(planets));
+
     var commands = [];
     for (;;) {
-        planets.forEach(planet => planet.future = calculatePlanetFuture(planet, fleets));
+        planets.forEach(planet => {
+            var states = calculatePlanetFuture(planet, fleets);
+            planet.future = states[states.length - 1];
+            planet.states = states;
+        });
         var freePlanets = planets
             .filter(p => p.owner == player)
             .filter(p => p.future.owner == player)
@@ -30,7 +41,8 @@ exports.handleRequest = (req, resp) => {
                     var numberOfShips = Math.min(planet.numberOfShips, planet.future.numberOfShips);
                     fleetCopy.push(createFleet(planet, enemyPlanet, numberOfShips, player));
                 });
-                return calculatePlanetFuture(enemyPlanet, fleetCopy).owner == player;
+                var states = calculatePlanetFuture(enemyPlanet, fleetCopy);
+                return states[states.length - 1].owner == player;
             })
             .sort((a, b) => b.growthRate - a.growthRate);
         if (enemyPlanets.length == 0) break;
@@ -48,7 +60,7 @@ exports.handleRequest = (req, resp) => {
         fleets.push(fleet);
         source.numberOfShips -= numberOfShips;
     }
-    console.log("planets: " + JSON.stringify(planets));
+    console.log("game: " +  req.body.gameState.id +" planets: " + JSON.stringify(planets));
 
     console.log("turn: " +req.body.gameState.turn + " game: " +  req.body.gameState.id + "\ncommands: " + JSON.stringify(commands));
     resp.status(200);
@@ -83,7 +95,7 @@ function calculatePlanetFuture(planet, fleets) {
     normalizeFleets(planet, fleets).forEach(fleet => {
         var state = states[states.length - 1];
         var numberOfShips = state.numberOfShips 
-            + ((fleet.turnsRemaining - state.turnsRemaining) * planet.growthRate * (planet.owner == 'NEUTRAL' ? 0 : 1))
+            + ((fleet.turnsRemaining - state.turnsRemaining + 1) * planet.growthRate * (planet.owner == 'NEUTRAL' ? 0 : 1))
             + (fleet.numberOfShips * (fleet.owner == planet.owner ? 1 : -1));
             states.push({
             "turnsRemaining": fleet.turnsRemaining,
@@ -91,7 +103,7 @@ function calculatePlanetFuture(planet, fleets) {
             "owner": numberOfShips >= 0 ? state.owner : fleet.owner
         });
     });
-    return states[states.length - 1];
+    return states;
 }
 
 function normalizeFleets(planet, fleets) {
