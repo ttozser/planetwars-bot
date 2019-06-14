@@ -1,4 +1,5 @@
 exports.handleRequest = (req, resp) => {
+    console.log("request: " + JSON.stringify(req.body));
     var player = req.query.player;
     var gamestate = req.body;
 
