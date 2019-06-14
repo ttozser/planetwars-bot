@@ -33,13 +33,25 @@ exports.handleRequest = (req, resp) => {
             .filter(p => p.future.numberOfShips > 0);
         if (freePlanets.length == 0) break;
 
-        var enemyPlanets = getValidTargets(planets, fleets, enemy);
+        var enemyPlanets = planets
+            .filter(planet => planet.future.owner == enemy)
+            .filter(enemyPlanet => {
+                var fleetCopy = copy(fleets);
+                freePlanets.forEach(planet => {
+                    var numberOfShips = getMaxNumberOfShips(planet, player);
+                    fleetCopy.push(createFleet(planet, enemyPlanet, numberOfShips, player));
+                });
+                var states = calculatePlanetFuture(enemyPlanet, fleetCopy);
+                return states[states.length - 1].owner == player;
+            })
+            .sort((a, b) => b.growthRate - a.growthRate);
+
         if (enemyPlanets.length == 0) break;
         var target = enemyPlanets[0];
 
         var source = freePlanets.sort((a, b) => getTravelTime(a, target) - getTravelTime(b, target))[0];
 
-        var numberOfShips = Math.min(source.numberOfShips, source.future.numberOfShips, target.future.numberOfShips + 1);
+        var numberOfShips = getMaxNumberOfShips(source, player);
         var fleet = createFleet(source, target, numberOfShips, player);
         commands.push({
             "sourcePlanet": source.id,
@@ -51,25 +63,14 @@ exports.handleRequest = (req, resp) => {
     }
     console.log("final prediction: " + JSON.stringify(planets, null, 2)+ "\ngame: " +  req.body.gameState.id);
 
-    console.log("turn: " + req.body.gameState.turn + " commands: " + JSON.stringify(commands, null, 2)+ + "\ngame: " +  req.body.gameState.id );
+    console.log("turn: " + req.body.gameState.turn + " commands: " + JSON.stringify(commands, null, 2) + "\ngame: " +  req.body.gameState.id );
     resp.status(200);
     resp.type('application/json');
     resp.send({"commands": commands});
 }
 
-function getValidTargets(planets, fleets, enemy) {
-    return planets
-            .filter(planet => planet.future.owner == enemy)
-            .filter(enemyPlanet => {
-                var fleetCopy = copy(fleets);
-                freePlanets.forEach(planet => {
-                    var numberOfShips = Math.min(planet.numberOfShips, planet.future.numberOfShips);
-                    fleetCopy.push(createFleet(planet, enemyPlanet, numberOfShips, player));
-                });
-                var states = calculatePlanetFuture(enemyPlanet, fleetCopy);
-                return states[states.length - 1].owner == player;
-            })
-            .sort((a, b) => b.growthRate - a.growthRate);
+function getMaxNumberOfShips(planet, player) {
+    return Math.min(Math.min(planet.states.filter(s => s.owner = player).map(s => s.numberOfShips)) + 1, planet.numberOfShips);
 }
 
 function createFleet(source, target, numberOfShips, player) {
