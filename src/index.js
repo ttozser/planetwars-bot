@@ -90,11 +90,21 @@ function getFreePlanets(planets) {
         .filter(p => p.future.numberOfShips > 0);
 }
 
+function isSafe(planets, fleets, target) {
+    var potentialFleets = copy(fleets);
+    planets.filter(planet => planet.owner == 'enemy')
+        .map(planet => createFleet(planet, target, planet.numberOfShips))
+        .forEach(fleet => potentialFleets.push(fleet));
+
+    var states = calculatePlanetFuture(target, potentialFleets);
+    return states[states.length - 1].owner = 'player';
+}
+
 function calculatePotentialTargets(planets, fleets, freePlanets) {
     // without free planets we can't start actions
     if (freePlanets.length == 0) return [];
 
-    return planets
+    var enemyTargets = planets
         .filter(planet => planet.future.owner == 'enemy')
         .filter(enemyPlanet => {
             var fleetCopy = copy(fleets);
@@ -105,7 +115,23 @@ function calculatePotentialTargets(planets, fleets, freePlanets) {
             var states = calculatePlanetFuture(enemyPlanet, fleetCopy);
             return states[states.length - 1].owner == 'player';
         })
-        .sort((a, b) => b.growthRate - a.growthRate)
+        .sort((a, b) => b.growthRate - a.growthRate);
+    
+    if (enemyTargets.length > 0)
+        return enemyTargets;
+
+    var safePlanets = freePlanets.filter(planet => isSafe(planets, fleets, planet));
+
+    return planets.filter(p => p.future.owner == 'neutral')
+        .filter(neutral => {            
+            var minEnemyTravelTime = Math.min(...planets.filter(enemy => enemy.owner == 'enemy')
+                        .map(enemy => getTravelTime(enemy, neutral)));
+            return safePlanets
+                .filter(planet => planet.numberOfShips > neutral.numberOfShips)
+                .map(planet => (minEnemyTravelTime - getTravelTime(planet, neutral)) * neutral.growthRate > neutral.numberOfShips)
+                .some(b => b);
+        })  
+        .sort((a, b) => b.growthRate - a.growthRate);
 }
 
 function recalculatePlanetStates(planets, fleets) {
