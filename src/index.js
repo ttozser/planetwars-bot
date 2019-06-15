@@ -1,7 +1,11 @@
 exports.handleRequest = (req, resp) => {
-    console.log("request: " + JSON.stringify(req.body));
-
+    
     if (!req.body.gameState) return;
+
+    var request = JSON.stringify(req.body);
+    for (var i = 0; i < request.length; i+=4000) {
+        console.log("request " +  req.body.gameState.id + " : " + request.substr(i, Math.min(i+4000, request.length)));
+    }
 
     var planets = normalizeOwners(req.body.gameState.planets, req.query.player);
     var fleets = normalizeOwners(req.body.gameState.fleets || [], req.query.player);
