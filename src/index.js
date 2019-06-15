@@ -157,8 +157,8 @@ function calculatePotentialTargets(planets, fleets, freePlanets) {
             var minEnemyTravelTime = Math.min(...planets.filter(enemy => enemy.owner == 'enemy')
                         .map(enemy => getTravelTime(enemy, neutral)));
             return safePlanets
-                .filter(planet => planet.numberOfShips > neutral.numberOfShips)
-                .map(planet => (minEnemyTravelTime - getTravelTime(planet, neutral)) * neutral.growthRate > neutral.numberOfShips)
+                .filter(planet => planet.numberOfShips > neutral.future.numberOfShips)
+                .map(planet => (minEnemyTravelTime - getTravelTime(planet, neutral)) * neutral.growthRate > neutral.future.numberOfShips ||  neutral.future.numberOfShips == neutral.growthRate)
                 .some(b => b);
         })  
         .sort((a, b) => b.growthRate - a.growthRate);
