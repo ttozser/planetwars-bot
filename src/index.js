@@ -61,8 +61,34 @@ function calculateNextCommand(planets, fleets) {
     var potentialTargets = calculatePotentialTargets(planets, fleets, freePlanets);
     if (potentialTargets.length == 0) return null;
 
-    var target = selectTarget(potentialTargets);
-    var source = selectSource(freePlanets, target);
+    var target;
+    var source;
+    for (var i = 0; i < potentialTargets.length && !target; ++i) {
+        var potentialTarget = potentialTargets[i];
+        if (potentialTarget.owner == 'neutral' && potentialTarget.numberOfShips > potentialTarget.growthRate) {
+            var changeState = potentialTarget.states.find(s => s.owner != 'neutral');
+            if (changeState && changeState.owner == 'enemy') {
+                var notTooClosePlanets = freePlanets.map(p => { return {"planet": p, "travelTime": getTravelTime(p, potentialTarget)};})
+                    .sort((a, b) => a.travelTime - b.travelTime)
+                    .filter(p => p.travelTime > changeState.turnsRemaining)
+                    .map(p => p.planet);
+                if (notTooClosePlanets.length > 0) {
+                    target = potentialTarget;
+                    source = notTooClosePlanets[0];
+                } else {
+                    continue;
+                }               
+            } else {
+                target = potentialTarget;
+                source = freePlanets[0];
+            }
+        } else {
+            target = potentialTarget;
+            source = freePlanets[0];
+        }
+    }
+    if (!target) return null;
+
     var numberOfShips = getRequiredNumberOfShips(source, target, fleets);
     return createCommand(source, target, numberOfShips);
 }
@@ -97,7 +123,7 @@ function isSafe(planets, fleets, target) {
         .forEach(fleet => potentialFleets.push(fleet));
 
     var states = calculatePlanetFuture(target, potentialFleets);
-    return states[states.length - 1].owner = 'player';
+    return states[states.length - 1].owner == 'player';
 }
 
 function calculatePotentialTargets(planets, fleets, freePlanets) {
@@ -156,7 +182,7 @@ function getRequiredNumberOfShips(source, enemyPlanet, fleets) {
 }
 
 function getMaxNumberOfShips(planet) {
-    return Math.min(Math.min(...planet.states.filter(s => s.owner = 'player').map(s => s.unnecessaryShips)), planet.numberOfShips);
+    return Math.min(Math.min(...planet.states.filter(s => s.owner == 'player').map(s => s.unnecessaryShips)), planet.numberOfShips);
 }
 
 function createFleet(source, target, numberOfShips) {
