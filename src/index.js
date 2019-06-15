@@ -42,7 +42,7 @@ function normalizeOwner(hasOwner, player) {
 
 function calculateCommands(planets, fleets) {
     var commands = [];
-    for (;;) {
+    for (var i = 0; i<50; ++i) {
         var command = calculateNextCommand(planets, fleets);
         if (!command) break;
         commands.push(command);
