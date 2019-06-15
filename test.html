@@ -1,0 +1,90 @@
+<html>
+	<head> 
+		<script>
+			exports = {};
+		</script>
+		<script type = "text/javascript" src = "file:///C:/Users/ttozser/dev/aliz/planetwars/src/index.js"></script>
+		<script>
+			function init() {
+				req.body = JSON.parse(document.getElementById("requestBody").value);
+				document.getElementById("requestBody").value = JSON.stringify(req.body, null, 2);
+			}
+		
+			var req = {};
+			req.query = {}
+			req.query.player = 'tamas.tozser@aliz.ai';
+			var hideNonChangedPlanets = true
+			
+			function planetStates() {
+				try {
+					init();
+					var planets = normalizeOwners(req.body.gameState.planets, req.query.player);
+					var fleets = normalizeOwners(req.body.gameState.fleets || [], req.query.player);
+					planets = recalculatePlanetStates(planets, fleets);
+					displayPlanets(planets);
+				} catch(e) {
+					handleError(e);
+				}
+			}
+			
+			function displayPlanets(planets) {
+				if (hideNonChangedPlanets)
+					planets = planets.filter(planet => planet.states.length > 1);
+				planets.forEach(planet => delete planet.coordinates);
+				planets.forEach(planet => delete planet.future);
+				document.getElementById("value").innerHTML = JSON.stringify(planets, null, 2);
+			}
+			
+			function commands() {
+				try {
+					init();
+					var planets = normalizeOwners(req.body.gameState.planets, req.query.player);
+					var fleets = normalizeOwners(req.body.gameState.fleets || [], req.query.player);
+					var commands = calculateCommands(planets, fleets);
+					document.getElementById("value").innerHTML = JSON.stringify(commands, null, 2);
+				} catch(e) {
+					handleError(e);
+				}
+			}
+			
+			function finalState() {
+				try {
+					init();
+					var planets = normalizeOwners(req.body.gameState.planets, req.query.player);
+					var fleets = normalizeOwners(req.body.gameState.fleets || [], req.query.player);
+					var commands = calculateCommands(planets, fleets);
+					planets = recalculatePlanetStates(planets, fleets);
+					displayPlanets(planets);
+				} catch(e) {
+					handleError(e);
+				}
+			}
+			
+			function showHide() {
+				hideNonChangedPlanets = !hideNonChangedPlanets;
+			}
+			
+			function handleError(e) {
+				document.getElementById("value").innerHTML = "error: " + e;
+				throw e;
+			}
+			
+		</script>
+	</head> 
+	<body>
+		<div style="width: 100%">
+			<div style="width: 50%; float: left;">
+				<input type="submit" value="planetStates" onclick="JavaScript:planetStates()">
+				<input type="submit" value="commands" onclick="JavaScript:commands()">
+				<input type="submit" value="finalState" onclick="JavaScript:finalState()">
+				<input type="submit" value="show/hide hidden" onclick="JavaScript:showHide()">
+				<textarea id="requestBody"  rows="40" cols="200" style="width: 100%; height: 90%">
+					{"gameState":{"id":"18fe9ca6-8bc9-46ce-8f2a-c1e34ec963bf","mapId":"379aa325-fda0-4c36-a8fb-c1d6a579e858","startedAt":1560596504324,"maxTurn":300,"turn":122,"players":["tamas.tozser@aliz.ai","gergely.sipos@doctusoft.com"],"planets":[{"id":"id:planet:28cb00b5-6acd-4a12-be93-69abb9a7af71","owner":"gergely.sipos@doctusoft.com","coordinates":{"x":11,"y":13},"numberOfShips":91,"growthRate":8},{"id":"id:planet:effe89be-f239-43f7-9670-1f362d04c78b","owner":"tamas.tozser@aliz.ai","coordinates":{"x":3,"y":23},"numberOfShips":193,"growthRate":4},{"id":"id:planet:3e1b1ac6-5f32-480b-8d99-5977617f179a","owner":"tamas.tozser@aliz.ai","coordinates":{"x":23,"y":3},"numberOfShips":34,"growthRate":4},{"id":"id:planet:d53fb712-c109-4692-885f-78be25951da9","owner":"gergely.sipos@doctusoft.com","coordinates":{"x":15,"y":13},"numberOfShips":321,"growthRate":8}],"fleets":[{"owner":"gergely.sipos@doctusoft.com","sourcePlanet":"id:planet:d53fb712-c109-4692-885f-78be25951da9","targetPlanet":"id:planet:3e1b1ac6-5f32-480b-8d99-5977617f179a","numberOfShips":25,"totalTripLength":13,"turnsRemaining":13},{"owner":"gergely.sipos@doctusoft.com","sourcePlanet":"id:planet:d53fb712-c109-4692-885f-78be25951da9","targetPlanet":"id:planet:3e1b1ac6-5f32-480b-8d99-5977617f179a","numberOfShips":25,"totalTripLength":13,"turnsRemaining":12},{"owner":"gergely.sipos@doctusoft.com","sourcePlanet":"id:planet:d53fb712-c109-4692-885f-78be25951da9","targetPlanet":"id:planet:3e1b1ac6-5f32-480b-8d99-5977617f179a","numberOfShips":25,"totalTripLength":13,"turnsRemaining":10},{"owner":"gergely.sipos@doctusoft.com","sourcePlanet":"id:planet:d53fb712-c109-4692-885f-78be25951da9","targetPlanet":"id:planet:3e1b1ac6-5f32-480b-8d99-5977617f179a","numberOfShips":25,"totalTripLength":13,"turnsRemaining":8},{"owner":"gergely.sipos@doctusoft.com","sourcePlanet":"id:planet:28cb00b5-6acd-4a12-be93-69abb9a7af71","targetPlanet":"id:planet:effe89be-f239-43f7-9670-1f362d04c78b","numberOfShips":25,"totalTripLength":13,"turnsRemaining":8},{"owner":"gergely.sipos@doctusoft.com","sourcePlanet":"id:planet:d53fb712-c109-4692-885f-78be25951da9","targetPlanet":"id:planet:3e1b1ac6-5f32-480b-8d99-5977617f179a","numberOfShips":25,"totalTripLength":13,"turnsRemaining":5},{"owner":"gergely.sipos@doctusoft.com","sourcePlanet":"id:planet:d53fb712-c109-4692-885f-78be25951da9","targetPlanet":"id:planet:3e1b1ac6-5f32-480b-8d99-5977617f179a","numberOfShips":25,"totalTripLength":13,"turnsRemaining":4}]},"type":"GAME_STATE"}
+				</textarea>
+				<br>
+			</div>
+
+			<pre id="value" style="width: 50%; float: right;"></pre>
+		</div>
+	</body>
+</html>
